@@ -10,10 +10,13 @@
 </head>
 <body>
   <div class="shell">
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-mark" aria-hidden="true">◆</div>
-        <div><strong>Crypto Savings</strong><small>Shared pool ledger</small></div>
+    <aside class="sidebar" id="primarySidebar" inert>
+      <div class="sidebar-header">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">◆</div>
+          <div><strong>Crypto Savings</strong><small>Shared pool ledger</small></div>
+        </div>
+        <button class="mobile-menu-close" id="closeMenuButton" type="button">Close menu</button>
       </div>
       <nav class="nav" aria-label="Main navigation">
         <button data-view="overview" class="active"><span aria-hidden="true">◫</span> Overview</button>
@@ -29,7 +32,7 @@
 
     <div class="main-wrap">
       <header class="topbar">
-        <button class="mobile-menu" id="menuButton" aria-label="Open menu">☰</button>
+        <button class="mobile-menu" id="menuButton" type="button" aria-controls="primarySidebar" aria-expanded="false" aria-label="Open navigation menu">Menu</button>
         <div class="breadcrumb"><span>POOL WORKSPACE</span><strong id="pageTitle">Overview</strong></div>
         <div class="top-actions">
           <button class="button ghost" id="refreshButton" type="button">↻ <span>Refresh prices</span></button>
@@ -50,15 +53,18 @@
   </dialog>
 
   <dialog id="contributionDialog">
-    <form id="contributionForm" class="dialog-form">
-      <div class="dialog-heading"><div><span class="eyebrow">NEW CONTRIBUTION</span><h2>Record money received</h2></div><button type="button" class="close" data-close aria-label="Close">×</button></div>
+    <form id="contributionForm" class="dialog-form" novalidate>
+      <div class="dialog-heading"><div><span class="eyebrow" id="contributionMode">NEW CONTRIBUTION</span><h2>Record money received</h2></div><button type="button" class="close" data-close aria-label="Close">×</button></div>
       <label>Stakeholder<select name="stakeholderId" required></select></label>
+      <label>Received in the Philippines (PHT, UTC+08:00)<input name="receivedAt" type="datetime-local" min="2010-01-01T00:00" required></label>
       <div class="form-grid">
         <label>Amount received (PHP)<input name="php" type="number" min="0.01" step="0.01" inputmode="decimal" required placeholder="10,000"></label>
         <label>Buy over how many days?<input name="days" type="number" min="1" max="365" step="1" value="30" required></label>
       </div>
       <div class="quote-preview" id="contributionQuote">Refresh market prices to see the estimated USDT.</div>
-      <p class="help">Uses the current market quote for USDT/PHP. This is a simulated conversion; it may differ from what an exchange actually credits.</p>
+      <p class="help">The quoted USDT is a simulated estimate, including for earlier receipt times. It may differ from what an exchange actually credited.</p>
+      <label id="correctionReasonField" hidden>Reason for correction<input name="correctionReason" maxlength="240" placeholder="What was wrong with the original record?"></label>
+      <div id="contributionError" class="form-error" role="alert" tabindex="-1" hidden></div>
       <div class="dialog-actions"><button type="button" class="button ghost" data-close>Cancel</button><button type="submit" class="button primary">Record contribution</button></div>
     </form>
   </dialog>
@@ -79,6 +85,7 @@
   </dialog>
 
   <input id="importInput" type="file" accept="application/json,.json" hidden>
+  <input id="verifyInput" type="file" accept="application/json,.json" hidden>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script type="module" src="./app.js"></script>
 </body>

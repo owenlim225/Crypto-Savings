@@ -16,6 +16,29 @@ export const DEFAULT_TARGETS = [
 
 const DAY_MS = 86_400_000;
 const EPS = 1e-8;
+const MANILA_OFFSET_MS = 8 * 60 * 60_000;
+
+export function manilaLocalValue(now = new Date()) {
+  return new Date(new Date(now).getTime() + MANILA_OFFSET_MS)
+    .toISOString().slice(0, 16);
+}
+
+export function receiptTimeToIso(value, now = new Date()) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) {
+    throw new Error("Enter a valid Philippine receipt date and time.");
+  }
+  if (value < "2010-01-01T00:00") {
+    throw new Error("Receipt time must be from 2010 onward.");
+  }
+  const time = new Date(Date.parse(value + ":00+08:00"));
+  if (!Number.isFinite(time.getTime()) || manilaLocalValue(time) !== value) {
+    throw new Error("Enter a valid Philippine receipt date and time.");
+  }
+  if (time.getTime() > new Date(now).getTime()) {
+    throw new Error("Receipt time cannot be in the future.");
+  }
+  return time.toISOString();
+}
 
 export function round(value, places = 10) {
   const factor = 10 ** places;
@@ -65,6 +88,52 @@ export function targetsForDay(history, day) {
   return [...history]
     .filter((version) => version.effectiveDay <= day)
     .sort((a, b) => b.effectiveDay.localeCompare(a.effectiveDay))[0]?.targets ?? [];
+}
+
+export function orphanedRecordedExecutions(state) {
+  const active = (state.contributions ?? []).filter((item) => !item.voidedAt);
+  const trades = state.manualTrades ?? [];
+  if (!active.length || !trades.length) return trades;
+  const firstDay = active.map((item) => item.firstBuyDay).sort()[0];
+  const lastBuyDay = active.map((item) => addDays(item.firstBuyDay, item.days - 1)).sort().at(-1);
+  const lastTradeDay = trades.map((trade) => trade.day).sort().at(-1);
+  const throughDay = lastBuyDay < lastTradeDay ? lastBuyDay : lastTradeDay;
+  const cash = Object.fromEntries((state.stakeholders ?? []).map((person) => [person.id, 0]));
+  const matched = new Set();
+  for (let day = firstDay; day <= throughDay; day = addDays(day, 1)) {
+    for (const item of active.filter((entry) => entry.firstBuyDay === day)) {
+      cash[item.stakeholderId] = (cash[item.stakeholderId] ?? 0) + item.usdt;
+    }
+    const available = { ...cash };
+    const targets = targetsForDay(state.targetsHistory ?? [], day);
+    const plans = new Map();
+    for (const item of active) {
+      const index = daysBetween(item.firstBuyDay, day);
+      if (index < 0 || index >= item.days) continue;
+      const budget = Math.min(available[item.stakeholderId] ?? 0, item.usdt / item.days);
+      if (budget <= EPS) continue;
+      available[item.stakeholderId] -= budget;
+      let assigned = 0;
+      targets.forEach((target, targetIndex) => {
+        const planned = targetIndex === targets.length - 1
+          ? budget - assigned : budget * target.weight / 100;
+        assigned += planned;
+        if (planned <= 0) return;
+        if (!plans.has(target.assetId)) plans.set(target.assetId, []);
+        plans.get(target.assetId).push({ stakeholderId: item.stakeholderId, planned });
+      });
+    }
+    for (const [assetId, participants] of plans) {
+      const trade = trades.find((entry) => entry.day === day && entry.assetId === assetId);
+      const plannedTotal = participants.reduce((sum, part) => sum + part.planned, 0);
+      if (trade) matched.add(trade);
+      for (const part of participants) {
+        cash[part.stakeholderId] -= trade
+          ? trade.costUsdt * part.planned / plannedTotal : part.planned;
+      }
+    }
+  }
+  return trades.filter((trade) => !matched.has(trade));
 }
 
 export function quoteFromSimplePrice(data, assetIds) {
@@ -160,15 +229,18 @@ export function replay(state, throughDay = latestCompleteDay()) {
   const history = [];
   const priceDays = state.priceDays ?? {};
   const manualTrades = state.manualTrades ?? [];
+  const orphaned = orphanedRecordedExecutions(state);
   const firstDay = contributions.length
     ? contributions.map((item) => item.firstBuyDay).sort()[0]
     : null;
   let pendingDay = null;
-  let error = null;
+  let error = orphaned.length
+    ? "Recorded execution on " + orphaned[0].day + " has no planned buy."
+    : null;
   let processedThrough = null;
   let previousValues = {};
 
-  if (firstDay && firstDay <= throughDay) {
+  if (!error && firstDay && firstDay <= throughDay) {
     for (let day = firstDay; day <= throughDay; day = addDays(day, 1)) {
       const snapshot = priceDays[day];
       if (!snapshot) {
