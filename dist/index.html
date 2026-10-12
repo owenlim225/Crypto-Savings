@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0c1516">
+  <meta name="description" content="Track a shared crypto pool with separate stakeholder lots and dated market snapshots.">
+  <title>Crypto Savings · Pool ledger</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">◆</div>
+        <div><strong>Crypto Savings</strong><small>Shared pool ledger</small></div>
+      </div>
+      <nav class="nav" aria-label="Main navigation">
+        <button data-view="overview" class="active"><span aria-hidden="true">◫</span> Overview</button>
+        <button data-view="people"><span aria-hidden="true">◎</span> Stakeholders</button>
+        <button data-view="activity"><span aria-hidden="true">≡</span> Activity</button>
+        <button data-view="settings"><span aria-hidden="true">⚙</span> Settings</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="status-dot-row"><span class="status-dot" id="connectionDot"></span><span id="connectionText">Checking market data</span></div>
+        <p>Simulated buys. No exchange orders are placed.</p>
+      </div>
+    </aside>
+
+    <div class="main-wrap">
+      <header class="topbar">
+        <button class="mobile-menu" id="menuButton" aria-label="Open menu">☰</button>
+        <div class="breadcrumb"><span>POOL WORKSPACE</span><strong id="pageTitle">Overview</strong></div>
+        <div class="top-actions">
+          <button class="button ghost" id="refreshButton" type="button">↻ <span>Refresh prices</span></button>
+          <button class="button primary" id="addContributionButton" type="button">＋ <span>New contribution</span></button>
+        </div>
+      </header>
+      <main id="content" tabindex="-1"></main>
+    </div>
+  </div>
+
+  <dialog id="stakeholderDialog">
+    <form id="stakeholderForm" class="dialog-form">
+      <div class="dialog-heading"><div><span class="eyebrow">NEW STAKEHOLDER</span><h2>Add a person</h2></div><button type="button" class="close" data-close aria-label="Close">×</button></div>
+      <label>Full name<input name="name" autocomplete="name" maxlength="80" required placeholder="e.g. Maria Santos"></label>
+      <p class="help">Each person has their own cash balance and token lots.</p>
+      <div class="dialog-actions"><button type="button" class="button ghost" data-close>Cancel</button><button type="submit" class="button primary">Add stakeholder</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="contributionDialog">
+    <form id="contributionForm" class="dialog-form">
+      <div class="dialog-heading"><div><span class="eyebrow">NEW CONTRIBUTION</span><h2>Record money received</h2></div><button type="button" class="close" data-close aria-label="Close">×</button></div>
+      <label>Stakeholder<select name="stakeholderId" required></select></label>
+      <div class="form-grid">
+        <label>Amount received (PHP)<input name="php" type="number" min="0.01" step="0.01" inputmode="decimal" required placeholder="10,000"></label>
+        <label>Buy over how many days?<input name="days" type="number" min="1" max="365" step="1" value="30" required></label>
+      </div>
+      <div class="quote-preview" id="contributionQuote">Refresh market prices to see the estimated USDT.</div>
+      <p class="help">Uses the current market quote for USDT/PHP. This is a simulated conversion; it may differ from what an exchange actually credits.</p>
+      <div class="dialog-actions"><button type="button" class="button ghost" data-close>Cancel</button><button type="submit" class="button primary">Record contribution</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="tradeDialog">
+    <form id="tradeForm" class="dialog-form">
+      <div class="dialog-heading"><div><span class="eyebrow">RECORDED EXECUTION</span><h2>Replace simulated buy</h2></div><button type="button" class="close" data-close aria-label="Close">×</button></div>
+      <input name="day" type="hidden"><input name="assetId" type="hidden">
+      <div class="trade-context" id="tradeContext"></div>
+      <div class="form-grid">
+        <label>Total USDT spent, fees included<input name="costUsdt" type="number" min="0.00000001" step="any" required></label>
+        <label>Net token quantity received<input name="quantity" type="number" min="0.0000000001" step="any" required></label>
+      </div>
+      <label>Fee included in total (USDT)<input name="feeUsdt" type="number" min="0" step="any" value="0" required></label>
+      <p class="help">The app divides this execution among participating people in proportion to their planned spend. A price quote cannot verify the trade.</p>
+      <div class="dialog-actions"><button type="button" class="button ghost" data-close>Cancel</button><button type="submit" class="button primary">Save execution</button></div>
+    </form>
+  </dialog>
+
+  <input id="importInput" type="file" accept="application/json,.json" hidden>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
